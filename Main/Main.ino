@@ -95,6 +95,23 @@ void loop(){
 if(FLUXO == true){
   if(LIGADO == false){ 
     Serial.print("Carro está desligado. -> ");    
+   
+    if(FAROL == true && LUZ == true){
+      digitalWrite(pinoLEDfarol, HIGH);
+      if(LDRfarol < 2000){
+          Serial.println("Farol e luz interna estão ligados!!!");
+          delay(1000);
+          Serial.println("Desligando o farol em 5 segundos.");
+          delay(5000);
+          digitalWrite(pinoLEDfarol, LOW);
+          FAROL = false;
+          Serial.println("Farol está desligado!!!");
+        }else{
+        Serial.println("");
+        }
+    }
+
+    
     if(FAROL == true){
       digitalWrite(pinoLEDfarol, HIGH);
       if(LDRfarol < 2000){
