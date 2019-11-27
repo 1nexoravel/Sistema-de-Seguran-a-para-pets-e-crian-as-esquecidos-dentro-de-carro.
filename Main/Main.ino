@@ -21,6 +21,8 @@ bool LIGADO;
 bool FAROL;
 bool LUZ;
 bool FLUXO;
+bool QUEIMADO;
+bool QUEIMADOF;
 float U; 
 float T; 
 int LDRfarol;
@@ -31,9 +33,9 @@ int pinoLDRinterno = 35;
 int pinoPIR = 32;
 int pinoLEDfarol = 15; //15 2 0 4
 int pinoLEDinterno = 2; //15 2 0 4
-int pinoLEDdentro = 0;
+int pinoLEDdentro = 18;
 int pinoLEDjanela = 4;
-int pinoLEDtemperatura = 4;
+int pinoLEDtemperatura = 0;
 DHT dht = DHT(13, DHT11);
 BlynkTimer timer;
 
@@ -45,9 +47,10 @@ void setup(){
   timer.setInterval(1000L, sendSensor);
   dht.begin();
   pinMode(pinoLEDdentro, OUTPUT); //VERDE, GENTE
-  pinMode(pinoLEDjanela, OUTPUT); //VERMELHO, JANELA
-  pinMode(pinoLEDinterno, OUTPUT); //AZUL, LATERNA INTERNA
+  pinMode(pinoLEDjanela, OUTPUT); //AZUL, JANELA
+  pinMode(pinoLEDinterno, OUTPUT); //BRANCO, LATERNA INTERNA
   pinMode(pinoLEDfarol, OUTPUT); //BRANCO, FAROL
+  pinMode(pinoLEDtemperatura, OUTPUT); //VERMELHO, FAROL
   pinMode(pinoPIR, INPUT); 
   pinMode(pinoLDRfarol, INPUT); 
   pinMode(pinoLDRinterno, INPUT);
@@ -104,13 +107,15 @@ if(FLUXO == true){
    
     if(FAROL == true && LUZ == true){
       digitalWrite(pinoLEDfarol, HIGH);
-      if(LDRfarol < 2000){
+      if(LDRfarol < 3000){
           Serial.println("Farol e luz interna estão ligados!!!");
           delay(1000);
-          Serial.println("Desligando o farol em 5 segundos.");
+          Serial.println("Desligando o farol e luz interna em 5 segundos.");
           delay(5000);
           digitalWrite(pinoLEDfarol, LOW);
+          digitalWrite(pinoLEDinterno, LOW);
           FAROL = false;
+          LUZ = false;
           Serial.println("Farol está desligado!!!");
         }else{
         Serial.println("");
@@ -120,7 +125,7 @@ if(FLUXO == true){
     
     if(FAROL == true){
       digitalWrite(pinoLEDfarol, HIGH);
-      if(LDRfarol < 2000){
+      if(LDRfarol < 3000){
           Serial.println("Farol está ligado!!!");
           delay(1000);
           Serial.println("Desligando o farol em 5 segundos.");
@@ -148,26 +153,35 @@ if(FLUXO == true){
     }
     if(PIR == 1){
       Serial.print("Animal ou criança dentro do carro! | ");
+      Serial.print("Temperatura: ");
+      Serial.print(T);
+      Serial.print(" | ");
       digitalWrite(pinoLEDdentro, HIGH);
-      if(T > 28){
+      if(T > 31){
         Serial.print("Temperatura alta: ");
-        Serial.print(T);
-        Serial.print(" | ");
+
+        digitalWrite(pinoLEDtemperatura, HIGH);
+        Serial.print("Descendo as janelas."); 
+        delay(5000);  
         digitalWrite(pinoLEDjanela, HIGH);
-        Serial.print("Descendo as janelas.");    
           }
-      } 
-      Serial.println("");
+      }else{
+         digitalWrite(pinoLEDdentro, LOW);
+         digitalWrite(pinoLEDjanela, LOW);
+        } 
+      //Serial.println("");
   }else{
     Serial.print("Carro está ligado. -> ");
     if(FAROL == true){
       digitalWrite(pinoLEDfarol, HIGH);
       delay(1000);
       LDRfarol = analogRead(pinoLDRfarol);
-      if(LDRfarol < 2000){
+      if(LDRfarol < 3000){
         Serial.print("Farol está ligado | ");
+        QUEIMADOF = false;
       }else{
         Serial.print("Farol está queimado | ");
+        QUEIMADOF = true;
       }
     }
     if(FAROL == false){
@@ -179,16 +193,21 @@ if(FLUXO == true){
       delay(1000);
       LDRinterno = analogRead(pinoLDRinterno);
       if(LDRinterno < 4000){
-        Serial.println("Luz interna está ligada.");
+        Serial.print("Luz interna está ligada | ");
+        QUEIMADO = false;
       }else{
-        Serial.println("Luz interna está está queimada.");
+        Serial.print("Luz interna está está queimada | ");
+        QUEIMADO = true;
       }
     }
     if(LUZ == false){
       digitalWrite(pinoLEDinterno, LOW);
-      Serial.println("Luz interna está desligada.");
+      Serial.print("Luz interna está desligada.");
     }
-  }
+    if(QUEIMADO == true || QUEIMADOF == true){
+      Serial.print("Enviando SMS para o motorista");
+      }
+  }Serial.println("");
 }else{}
 }
 
