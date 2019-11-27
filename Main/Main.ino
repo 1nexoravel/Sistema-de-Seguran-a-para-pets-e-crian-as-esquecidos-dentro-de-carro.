@@ -1,9 +1,14 @@
-//#define BLYNK_PRINT Serial
-//#define BLYNK_USE_DIRECT_CONNECT
+#define BLYNK_PRINT Serial
+#define BLYNK_USE_DIRECT_CONNECT
+#include <BlynkSimpleEsp32_BLE.h>
+#include <BLEDevice.h>
+#include <BLEServer.h>
+
+/*
 #include <WiFi.h>
 #include <WiFiClient.h>
 #include <BlynkSimpleEsp32.h>
-
+*/
 #include "DHT.h"
 
 char ssid[] = "inexoravel";
@@ -34,8 +39,9 @@ BlynkTimer timer;
 
 void setup(){
   Serial.begin(9600);
-  //Blynk.setDeviceName("Blynk Poderoso");
-  Blynk.begin(auth, ssid, pass);
+  Blynk.setDeviceName("SIS SEG ESP32");
+  Blynk.begin(auth);
+  //Blynk.begin(auth, ssid, pass);
   timer.setInterval(1000L, sendSensor);
   dht.begin();
   pinMode(pinoLEDdentro, OUTPUT); //VERDE, GENTE
