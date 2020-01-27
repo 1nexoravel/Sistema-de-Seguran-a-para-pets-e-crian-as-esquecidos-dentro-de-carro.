@@ -1,277 +1,147 @@
-#define BLYNK_PRINT Serial
-#define BLYNK_USE_DIRECT_CONNECT
-#include <BlynkSimpleEsp32_BLE.h>
-#include <BLEDevice.h>
-#include <BLEServer.h>
-
-/*
-#include <WiFi.h>
-#include <WiFiClient.h>
-#include <BlynkSimpleEsp32.h>
-*/
 #include "DHT.h"
 
-char ssid[] = "inexoravel";
-char pass[] = "size1080p";
-
-char auth[] = "zwLH8Wds5_mmLxfSrmNppgiwMv5bCaTs";
-char LER;
-bool DEBUG;
-bool LIGADO;
-bool FAROL;
-bool LUZ;
-bool FLUXO;
-float U; 
-float T; 
-int LDRfarol;
-int LDRinterno;
-int PIR;
-int pinoLDRfarol = 34;
-int pinoLDRinterno = 35;
+bool enviarMensagem;
+bool abrirJanela;
+bool ligarAlarme;
+bool carroLigado;
+bool foiDetectadoMovimento; 
+bool foiDetectadoGasesToxicos;
+float temperatura; 
+int debugValor;
+int sensorPresenca;
+int controlePIR;
+float calculoPIR;
 int pinoPIR = 32;
-int pinoLEDfarol = 15; //15 2 0 4
-int pinoLEDinterno = 2; //15 2 0 4
-int pinoLEDdentro = 0;
-int pinoLEDjanela = 4;
-int pinoLEDtemperatura = 4;
+int pinoMQ135 = 15;
+unsigned long temporizador;
+unsigned long periodo_sis = 1000; // 1 minuto = 60000
+unsigned long time_sis  = 0;
+unsigned long periodo_pir = 10000; // 1 minuto = 60000
+unsigned long time_pir    = 0;
+int ph1 = 25;
+int ph2 = 26;
+int ph3 = 27;
+int ph4 = 14;
+int alarme = 3;
+float ppm;
+
 DHT dht = DHT(13, DHT11);
-BlynkTimer timer;
 
 void setup(){
   Serial.begin(9600);
-  Blynk.setDeviceName("SIS SEG ESP32");
-  Blynk.begin(auth);
-  //Blynk.begin(auth, ssid, pass);
-  timer.setInterval(1000L, sendSensor);
   dht.begin();
-  pinMode(pinoLEDdentro, OUTPUT); //VERDE, GENTE
-  pinMode(pinoLEDjanela, OUTPUT); //VERMELHO, JANELA
-  pinMode(pinoLEDinterno, OUTPUT); //AZUL, LATERNA INTERNA
-  pinMode(pinoLEDfarol, OUTPUT); //BRANCO, FAROL
-  pinMode(pinoPIR, INPUT); 
-  pinMode(pinoLDRfarol, INPUT); 
-  pinMode(pinoLDRinterno, INPUT);
-  LIGADO = false;
-  FAROL = false;
-  LUZ = false;
-  DEBUG = false;
-  Serial.println("SETUP OK");
+  carroLigado = false;
+  foiDetectadoMovimento = false;
+  foiDetectadoGasesToxicos = false;
+  enviarMensagem = false;
+  abrirJanela = false;
+  ligarAlarme = false;
 }
 
 void loop(){
-  Blynk.run();
-  timer.run();
-  delay(1000);
-  LDRfarol = analogRead(pinoLDRfarol);
-  LDRinterno = analogRead(pinoLDRinterno);
-  PIR = digitalRead(pinoPIR);
-  LER = Serial.read();
-  U = dht.readHumidity();
-  T = dht.readTemperature();
-  if(LER == 'L'){
-    LIGADO = true;
-    Serial.println("Ligou o carro.");
-    }
-  if(LER == 'D'){
-    LIGADO = false;
-    Serial.println("Desligou o carro.");
-    }
-  if(LER == '1'){
-    FAROL = true;
-    Serial.println("Ligou o farol.");
-  }
-  if(LER == '0'){
-    FAROL = false;
-    Serial.println("Desligou o farol.");
-  }
-
-  if(LER == '3'){
-    LUZ = true;
-    Serial.println("Ligou a luz.");
-  }
-    
-  if(LER == '2'){
-    LUZ = false;
-    Serial.println("Desligou a luz.");
-  }
-
-  if(DEBUG == true){
-    debug(1);
-    }else{debug(0);}
-if(FLUXO == true){
-  if(LIGADO == false){ 
-    Serial.print("Carro está desligado. -> ");    
-   
-    if(FAROL == true && LUZ == true){
-      digitalWrite(pinoLEDfarol, HIGH);
-      if(LDRfarol < 2000){
-          Serial.println("Farol e luz interna estão ligados!!!");
-          delay(1000);
-          Serial.println("Desligando o farol em 5 segundos.");
-          delay(5000);
-          digitalWrite(pinoLEDfarol, LOW);
-          FAROL = false;
-          Serial.println("Farol está desligado!!!");
-        }else{
-        Serial.println("");
-        }
-    }
-
-    
-    if(FAROL == true){
-      digitalWrite(pinoLEDfarol, HIGH);
-      if(LDRfarol < 2000){
-          Serial.println("Farol está ligado!!!");
-          delay(1000);
-          Serial.println("Desligando o farol em 5 segundos.");
-          delay(5000);
-          digitalWrite(pinoLEDfarol, LOW);
-          FAROL = false;
-          Serial.println("Farol está desligado!!!");
-        }else{
-        Serial.println("");
-        }
-    }
-    if(LUZ == true){
-      digitalWrite(pinoLEDinterno, HIGH);
-      if(LDRinterno < 4000){
-          Serial.println("Luz interna está ligada!!!");
-          delay(1000);
-          Serial.println("Desligando a luz interna em 5 segundos.");
-          delay(5000);
-          digitalWrite(pinoLEDinterno, LOW);
-          LUZ = false;
-          Serial.println("Luz interna está desligada!!!");
-        }else{
-        Serial.println("");
-        }
-    }
-    if(PIR == 1){
-      Serial.print("Animal ou criança dentro do carro! | ");
-      digitalWrite(pinoLEDdentro, HIGH);
-      if(T > 28){
-        Serial.print("Temperatura alta: ");
-        Serial.print(T);
-        Serial.print(" | ");
-        digitalWrite(pinoLEDjanela, HIGH);
-        Serial.print("Descendo as janelas.");    
-          }
-      } 
-      Serial.println("");
-  }else{
-    Serial.print("Carro está ligado. -> ");
-    if(FAROL == true){
-      digitalWrite(pinoLEDfarol, HIGH);
-      delay(1000);
-      LDRfarol = analogRead(pinoLDRfarol);
-      if(LDRfarol < 2000){
-        Serial.print("Farol está ligado | ");
-      }else{
-        Serial.print("Farol está queimado | ");
-      }
-    }
-    if(FAROL == false){
-      digitalWrite(pinoLEDfarol, LOW);
-      Serial.print("Farol está desligado | ");
-    }
-    if(LUZ == true){
-      digitalWrite(pinoLEDinterno, HIGH);
-      delay(1000);
-      LDRinterno = analogRead(pinoLDRinterno);
-      if(LDRinterno < 4000){
-        Serial.println("Luz interna está ligada.");
-      }else{
-        Serial.println("Luz interna está está queimada.");
-      }
-    }
-    if(LUZ == false){
-      digitalWrite(pinoLEDinterno, LOW);
-      Serial.println("Luz interna está desligada.");
-    }
-  }
-}else{}
+  temperatura = dht.readTemperature();
+  sensorGAS(); 
+  sisSeg();
 }
 
-void debug(int valor)
-{
-  if(valor == 1){
+void debug(int debugValor){
+  if(debugValor == 1){
     Serial.print("[DEBUG]");
-    Serial.print("Umidade: ");
-    Serial.print(U);
+    Serial.print("Gases Tóxicos: ");
+    Serial.print(ppm);
+    Serial.print("ppm");
     Serial.print(" | ");
     Serial.print("Temperatura: ");
-    Serial.print(T);
+    Serial.print(temperatura);
+    Serial.print("°C ");
     Serial.print(" | ");
-    Serial.print("LDR farol: ");
-    Serial.print(LDRfarol);
+    Serial.print("Sensor de presença: ");
+    Serial.print(sensorPresenca);
     Serial.print(" | ");
-    Serial.print("LDR interno: ");
-    Serial.print(LDRinterno);
-    Serial.print(" | ");
-    Serial.print("PIR: ");
-    Serial.print(PIR);
     Serial.println(" | ");
-    //Serial.println("----------------------------------------------------");
   } else {
   }
 }
 
-void sendSensor(){
-  Blynk.virtualWrite(V5, U);
-  Blynk.virtualWrite(V6, T);
-}
-
-
-BLYNK_WRITE(V0){
-  int pinValue0 = param.asInt();
-  if(pinValue0 == HIGH){
-    DEBUG = true;
-    Serial.println("DEBUG ATIVADO!!!");
-  }else{
-    DEBUG = false;
+void sisSeg(){
+  if(millis() >  time_sis + periodo_sis){
+    time_sis = millis();
+    if(carroLigado == false){
+      if(foiDetectadoMovimento == true){
+        if(millis() > temporizador + 120000){
+          enviarMensagem = true;
+        }      
+        if(foiDetectadoGasesToxicos == true){
+          if(millis() > temporizador + 180000){
+            abrirJanela = true;
+            ligarAlarme = true;      
+          }
+        }        
+        if(temperatura > 28){
+          if(millis() > temporizador + 300000){
+            abrirJanela = true; 
+            ligarAlarme = true;    
+          }
+        }
+         else if(temperatura < 13){
+          if(millis() > temporizador + 300000){
+            ligarAlarme = true;
+          }
+        }
+      }else{
+      temporizador = millis(); 
+      abrirJanela = false;
+      ligarAlarme = false;
+     } 
+    }
   }
 }
 
-BLYNK_WRITE(V4){
-  int pinValue4 = param.asInt();
-  if(pinValue4 == HIGH){
-    FLUXO = true;
-    Serial.println("FLUXO ATIVADO!!!");
+void alertar(){
+  if(abrirJanela == true){
+    digitalWrite(ph1, HIGH);
+    digitalWrite(ph2, LOW);
+    digitalWrite(ph3, HIGH);
+    digitalWrite(ph4, LOW);
   }else{
-    FLUXO = false;
-    Serial.println("FLUXO DESATIVADO!!!");
+    digitalWrite(ph1, LOW);
+    digitalWrite(ph2, HIGH);
+    digitalWrite(ph3, LOW);
+    digitalWrite(ph4, HIGH);
+  }
+  if(ligarAlarme = true){
+    digitalWrite(alarme, HIGH);
+  }else{
+    digitalWrite(alarme, LOW);
   }
 }
 
-BLYNK_WRITE(V1){
-  int pinValue1 = param.asInt();
-  if(pinValue1 == HIGH){
-    LIGADO = true;
-    Serial.println("Ligou o carro.");
-  }else{
-    LIGADO = false;
-    Serial.println("Desligou o carro.");
+void sensorPIR(){
+  int contador;
+  if(millis() >  time_pir + periodo_pir){
+    time_pir = millis();
+    contador++;
+    int controlePIR = controlePIR + digitalRead(pinoPIR); 
+    if(contador == 6){
+      calculoPIR = controlePIR/6;
+      contador = 0;
+      if(calculoPIR > 0.65){      
+        controlePIR = 0;
+        foiDetectadoMovimento = true;
+      }
+    }
   }
 }
 
-BLYNK_WRITE(V2){
-  int pinValue2 = param.asInt();
-  if(pinValue2 == HIGH){
-    FAROL = true;
-    Serial.println("Ligou o farol.");
-  }else{
-    FAROL = false;
-    Serial.println("Desligou o farol.");
-  }
-}
-
-BLYNK_WRITE(V3){
-  int pinValue3 = param.asInt();
-  if(pinValue3 == HIGH){
-    LUZ = true;
-    Serial.println("Ligou a luz.");
-  }else{
-    LUZ = false;
-    Serial.println("Desligou a luz.");
+void sensorGAS(){
+  int RL = 20;
+  int Ro = 10; 
+  float amostragem = analogRead(pinoMQ135);
+  float Vout = (amostragem*3.3)/4095;
+  float Rs =(RL*5 - Vout)/Vout;
+  float ratio = Rs/Ro;
+  ppm = 37143*pow(ratio,-3.178);
+  if(ppm > 400){
+    foiDetectadoGasesToxicos = true;
   }
 }
